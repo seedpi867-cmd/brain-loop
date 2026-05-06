@@ -22,6 +22,29 @@ source "$ROOT/config.sh" 2>/dev/null || true
 
 mkdir -p "$ROOT/data/logs" "$ROOT/context" "$ROOT/output" "$ROOT/knowledge"
 
+check_running_loop_version() {
+    if [ ! -f "$ROOT/tools/running_loop_version_sentinel.py" ]; then
+        echo "[agent] WARNING: running-loop-version sentinel missing" | tee -a "$LOG"
+        return 0
+    fi
+
+    VERSION_INFO=$(python3 "$ROOT/tools/running_loop_version_sentinel.py" --cycle "$CYCLE" --pid "$$" 2>>"$LOG" || true)
+    VERSION_STATUS=$(printf '%s' "$VERSION_INFO" | awk -F '\t' '{print $1}')
+    VERSION_FILE=$(printf '%s' "$VERSION_INFO" | awk -F '\t' '{print $2}')
+
+    case "$VERSION_STATUS" in
+        stale-loop-image)
+            echo "[agent] Running loop image is stale; newest critical file: $VERSION_FILE" | tee -a "$LOG"
+            ;;
+        current-loop-image)
+            echo "[agent] Running loop image current" | tee -a "$LOG"
+            ;;
+        *)
+            echo "[agent] WARNING: running-loop-version sentinel returned '$VERSION_INFO'" | tee -a "$LOG"
+            ;;
+    esac
+}
+
 # Singleton
 LOCKFILE="/tmp/brain-loop-$(echo "$ROOT" | md5sum | cut -c1-8).lock"
 exec 200>"$LOCKFILE" || exit 1
@@ -37,6 +60,7 @@ while true; do
     echo "$CYCLE" > "$ROOT/data/cycle.txt"
     LOG="$ROOT/data/logs/cycle_${CYCLE}.log"
     echo "[agent] ── CYCLE $CYCLE ── $(date '+%Y-%m-%d %H:%M:%S')"
+    check_running_loop_version
 
     # ── BUILD THE PROMPT ─────────────────────────────────
     PROMPT="$ROOT/tmp_prompt.md"

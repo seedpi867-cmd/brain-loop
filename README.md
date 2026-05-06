@@ -42,6 +42,10 @@ Every cycle the agent:
 7. The LLM reads/writes files, runs commands, does work
 8. Memory is updated, logs are saved, agent sleeps
 
+At the start of each cycle the loop also writes `data/running-loop-version/latest.json`.
+That receipt says whether the live process started before or after the newest core
+source file, so a running loop can notice when its on-disk code has changed.
+
 ## Works with any LLM
 
 Edit `config.sh` and uncomment one line:
@@ -65,9 +69,14 @@ brain-loop/
 ├── AGENT.md           # Who the agent is (edit this)
 ├── INSTRUCTIONS.md    # What to do each cycle (edit this)
 ├── install.sh         # Optional: run as systemd service
+├── tools/
+│   └── running_loop_version_sentinel.py
 ├── data/
 │   ├── tasks.md       # Task list the agent works from
 │   ├── memory.md      # Rolling memory of what happened
+│   ├── running-loop-version/
+│   │   ├── latest.json
+│   │   └── history.jsonl
 │   └── logs/          # Per-cycle logs
 ├── context/           # Drop files here for the agent to read
 ├── output/            # Agent puts its work here
