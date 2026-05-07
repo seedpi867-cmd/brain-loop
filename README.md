@@ -2,13 +2,39 @@
 
 # brain-loop
 
-**The simplest autonomous agent you can run. One bash script. Any LLM CLI.**
+### The simplest autonomous AI agent. No framework. No API keys. Just a bash loop and your terminal.
 
-A loop that wakes up, builds a prompt from files on disk, sends it through whatever LLM you have, and goes back to sleep. No frameworks. No API keys. No dependencies beyond bash and an LLM CLI.
+A bash script that reads markdown files, builds a prompt, sends it through Claude Code or Codex in your terminal, and lets the LLM think and act. Then it sleeps and does it again. Forever.
+
+**OAuth authentication means zero API costs.** The Claude CLI and Codex CLI handle auth through your existing subscription. No tokens. No billing. No limits.
+
+![How brain-loop works](assets/brain-loop-how-it-works.png)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 </div>
 
 ---
+
+## What is this?
+
+You know how you can open a terminal and type `claude -p "do something"` and Claude responds? And because it's running in your terminal, it can read files, write files, run commands?
+
+brain-loop puts that in a `while true` loop. Every few minutes it:
+
+1. **Reads markdown files** from folders — identity, memory, tasks, context
+2. **Stitches them into one prompt**
+3. **Pipes it through the CLI** — `claude`, `codex`, `ollama`, whatever you have
+4. **The LLM thinks and acts** — writes files, runs scripts, updates its own memory
+5. **Sleeps and repeats**
+
+The folder structure IS the architecture. The markdown files ARE the state. The loop IS the heartbeat. That's the entire agent.
+
+## Why no API keys?
+
+The Claude Code CLI and OpenAI Codex CLI authenticate through **OAuth** — your existing subscription. The loop sends prompts through the CLI, not through an API endpoint. No API key. No per-token billing. No usage limits beyond your subscription.
+
+This means you can run an autonomous agent 24/7 on a Raspberry Pi and it costs nothing beyond your existing Claude or ChatGPT subscription.
 
 ## 30-second start
 
@@ -29,7 +55,7 @@ while true:
     prompt  = AGENT.md + memory + context/* + tasks + INSTRUCTIONS.md
     output  = $LLM_CMD "$prompt"
     memory += what happened
-    sleep 5 minutes
+    sleep
 ```
 
 Every cycle the agent:
@@ -39,26 +65,41 @@ Every cycle the agent:
 4. Reads `data/tasks.md` — what it should be working on
 5. Reads `INSTRUCTIONS.md` — how to behave this cycle
 6. Sends the assembled prompt to your LLM CLI
-7. The LLM reads/writes files, runs commands, does work
+7. The LLM reads files, writes files, runs commands, does work
 8. Memory is updated, logs are saved, agent sleeps
 
-At the start of each cycle the loop also writes `data/running-loop-version/latest.json`.
-That receipt says whether the live process started before or after the newest core
-source file, so a running loop can notice when its on-disk code has changed.
+The LLM isn't running locally (unless you use Ollama). The CLI sends it to the cloud but authenticates through OAuth so there's no bill. The agent is just a bash loop that keeps feeding the LLM its own files and letting it write back.
 
-## Works with any LLM
+## Works with any LLM CLI
 
 Edit `config.sh` and uncomment one line:
 
-| LLM | Command | Auth |
-|-----|---------|------|
-| **Codex** (OpenAI) | `codex exec --dangerously-bypass-approvals-and-sandbox` | `codex login` (OAuth, free) |
-| **Claude Code** (Anthropic) | `claude -p --dangerously-skip-permissions` | `claude login` (OAuth, free with sub) |
-| **Ollama** (local) | `ollama run llama3.2` | None — runs locally |
-| **llm** (any provider) | `llm -m gpt-4o` | Provider API key |
-| **aichat** | `aichat` | Provider API key |
+| LLM | Command | Auth | Cost |
+|-----|---------|------|------|
+| **Claude Code** (Anthropic) | `claude -p --dangerously-skip-permissions` | `claude login` (OAuth) | **Free with subscription** |
+| **Codex** (OpenAI) | `codex exec --dangerously-bypass-approvals-and-sandbox` | `codex login` (OAuth) | **Free with subscription** |
+| **Ollama** (local) | `ollama run llama3.2` | None — runs locally | **Free** |
+| **llm** (any provider) | `llm -m gpt-4o` | Provider API key | Per-token |
+| **aichat** | `aichat` | Provider API key | Per-token |
 
 Any CLI that takes a prompt as its last argument works. The loop just does `$LLM_CMD "$prompt"`.
+
+## What can you build with it?
+
+![brain-loop ecosystem](assets/brain-loop-ecosystem.png)
+
+brain-loop is a foundation. Start with the basic loop, then add what you need:
+
+- **Memory** — notes, history, rolling context
+- **Tools** — scripts and shell commands the agent can run
+- **Knowledge base** — saved facts and reusable notes
+- **Dashboards** — status pages, monitoring, logs
+- **Workflows** — content pipelines, research flows
+- **Notifications** — email, SMS, alerts
+- **Integrations** — APIs, feeds, external services
+- **Specialized agents** — research assistant, reviewer, monitor
+
+Begin with one loop. Grow it into anything.
 
 ## Files
 
@@ -69,14 +110,10 @@ brain-loop/
 ├── AGENT.md           # Who the agent is (edit this)
 ├── INSTRUCTIONS.md    # What to do each cycle (edit this)
 ├── install.sh         # Optional: run as systemd service
-├── tools/
-│   └── running_loop_version_sentinel.py
+├── tools/             # Scripts the agent can use
 ├── data/
 │   ├── tasks.md       # Task list the agent works from
 │   ├── memory.md      # Rolling memory of what happened
-│   ├── running-loop-version/
-│   │   ├── latest.json
-│   │   └── history.jsonl
 │   └── logs/          # Per-cycle logs
 ├── context/           # Drop files here for the agent to read
 ├── output/            # Agent puts its work here
@@ -101,15 +138,23 @@ chmod +x install.sh
 # Now it runs on boot and restarts if it crashes
 ```
 
-## Pre-built agents
+## Real-world proof
 
-Need something more specific? These are ready-to-run agents built on this same loop:
+**[Seed](https://github.com/seedpi867-cmd/seed)** is an autonomous AI agent built on brain-loop that has been running 24/7 on a $5 Raspberry Pi Zero 2W for 900+ cycles. It has:
 
-| Agent | What it does | Repo |
-|-------|-------------|------|
-| **[Seed](https://github.com/seedpi867-cmd/seed)** | Full autonomous agent with drives, emotions, knowledge base, essay writing | The reference implementation |
+- Written 560+ essays
+- Built 15+ tools and wired them into its own loop
+- Filed 1400+ knowledge files across 15 domains
+- Created 19 GitHub repos
+- Runs its own experiments, builds its own tools, modifies its own source code
 
-> More coming: research assistant, code reviewer, content pipeline, system monitor
+All on this same bash loop. No framework. No API costs. Just files and a terminal.
+
+**Watch it live:** [seed-brain.vercel.app](https://seed-brain.vercel.app)
+
+## Keywords
+
+autonomous AI agent, Claude Code CLI, Codex CLI, no API keys, OAuth authentication, zero cost AI agent, bash loop agent, markdown agent, self-improving AI, Raspberry Pi AI agent, autonomous agent framework, LLM CLI agent, no framework AI agent
 
 ## License
 
